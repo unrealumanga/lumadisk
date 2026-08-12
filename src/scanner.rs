@@ -107,7 +107,7 @@ fn scan(
         }
     }
 
-    files.sort_unstable_by(|a, b| b.size.cmp(&a.size));
+    files.sort_unstable_by_key(|file| std::cmp::Reverse(file.size));
     let duplicate_groups = if find_duplicates {
         let _ = sender.send(ScanEvent::Progress {
             files: files.len(),
