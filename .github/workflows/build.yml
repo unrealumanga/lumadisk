@@ -102,7 +102,7 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent dist/LumaDisk.app "$PACKAGE_PATH"
           shasum -a 256 "$PACKAGE_PATH" > "$PACKAGE_PATH.sha256"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: |
