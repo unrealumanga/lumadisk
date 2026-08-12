@@ -43,14 +43,14 @@ Storage fills up quietly. Normal file lists make it hard to see what matters. Lu
 
 ## Download
 
-Cross-platform builds are produced automatically by [GitHub Actions](https://github.com/unrealumanga/lumadisk/actions/workflows/build.yml):
+Download the [latest LumaDisk release](https://github.com/unrealumanga/lumadisk/releases/latest):
 
 - Windows x64: portable `.zip`
 - macOS Apple Silicon: `.app.zip`
 - macOS Intel: `.app.zip`
 - Linux x64: portable `.tar.gz`
 
-Open the latest successful workflow run and download the artifact for your operating system. Signed installers and notarized packages are planned for a future release.
+Extract the archive and launch LumaDisk. Each download includes a matching SHA-256 checksum file. These early builds are not yet code-signed or notarized, so your operating system may show an unfamiliar-developer warning.
 
 ## Build from source
 
