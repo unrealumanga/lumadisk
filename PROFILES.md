@@ -5,3 +5,4 @@
 ## opencode / codex / Gemini — mechanical / parallel / second opinion. Unrated.
 - DeepSeek-1 (sonnet subagent), P0.2: delivered measured numbers, caveats stated honestly, no new deps; but branched from main not my branch (merge conflicts) and omitted cold-cache. Reliability: high so far.
 - DeepSeek (W-03): precise, cited source lines (verified by orchestrator), honest about untested macOS path. Reliability: high.
+- DeepSeek (W-04): thorough, honest UNVERIFIED list; but left an unpinned download (orchestrator pinned sha256). Check supply-chain pins on review.

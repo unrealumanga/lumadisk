@@ -2,7 +2,7 @@
 
 - §0 W-00 [merged] orch: ARCHITECTURE + baseline docs
 - §0 W-01 [merged] DeepSeek-1: bench harness, 10k/100k/1M baseline (fcde2c8)
-- §1 W-04 [in_flight] DeepSeek: unsigned dmg/AppImage/deb CI skeleton (.wt/W-04)
+- §1 W-04 [merged] DeepSeek: unsigned dmg/AppImage/deb + gated signing; CI-UNVERIFIED until a runner executes it
 - §1 W-05 [blocked] user: signing needs Apple acct, HSM cert, VMs
 - §2 W-02 [in_flight] Astra-6: size types + tree model (.wt/W-02)
 - §5 W-03 [merged] DeepSeek: NSFileManager (macOS, untested) + 50-batch trash; Linux shell path is test-only

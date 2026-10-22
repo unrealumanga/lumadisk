@@ -14,3 +14,4 @@
 {"ticket": "D2", "event": "decision", "decision": "D2", "note": "physical default, ADJUDICATED", "ts": "2026-10-22T15:30:00Z"}
 {"ticket": "W-02", "workstream": "\u00a72", "agent": "Astra-6", "event": "state", "state": "in_flight", "summary": "size types + tree model (.wt/W-02)", "worktree": ".wt/W-02", "pr": null, "ts": "2026-10-22T15:30:00Z"}
 {"ts": "2026-10-22T16:00:00Z", "ticket": "W-03", "workstream": "\u00a75", "agent": "DeepSeek", "event": "state", "state": "merged", "summary": "NSFileManager (macOS, untested) + 50-batch trash; Linux shell path is test-only", "worktree": ".wt/W-03", "pr": null}
+{"ts": "2026-10-22T16:30:00Z", "ticket": "W-04", "workstream": "\u00a71", "agent": "DeepSeek", "event": "state", "state": "merged", "summary": "unsigned dmg/AppImage/deb + gated signing; CI-UNVERIFIED until a runner executes it", "worktree": ".wt/W-04", "pr": null}
