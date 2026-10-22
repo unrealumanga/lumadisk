@@ -2,3 +2,4 @@
 /.idea
 /.vscode
 *.pdb
+.claude/worktrees/
