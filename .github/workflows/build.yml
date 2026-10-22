@@ -153,8 +153,9 @@ jobs:
 
       - name: Fetch appimagetool
         run: |
-          # Pinned release tag. TODO: pin a sha256 once verified on a real run (not computed here).
+          # Pinned tag + sha256 (trust-on-first-use: hash computed by the orchestrator 2026-10-22 from the 1.9.0 release asset).
           curl -fsSL -o "$RUNNER_TEMP/appimagetool" https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage
+          echo "46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1  $RUNNER_TEMP/appimagetool" | sha256sum -c -
           chmod +x "$RUNNER_TEMP/appimagetool"
           echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
 
