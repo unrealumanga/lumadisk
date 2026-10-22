@@ -15,3 +15,9 @@
 {"ticket": "W-02", "workstream": "\u00a72", "agent": "Astra-6", "event": "state", "state": "in_flight", "summary": "size types + tree model (.wt/W-02)", "worktree": ".wt/W-02", "pr": null, "ts": "2026-10-22T15:30:00Z"}
 {"ts": "2026-10-22T16:00:00Z", "ticket": "W-03", "workstream": "\u00a75", "agent": "DeepSeek", "event": "state", "state": "merged", "summary": "NSFileManager (macOS, untested) + 50-batch trash; Linux shell path is test-only", "worktree": ".wt/W-03", "pr": null}
 {"ts": "2026-10-22T16:30:00Z", "ticket": "W-04", "workstream": "\u00a71", "agent": "DeepSeek", "event": "state", "state": "merged", "summary": "unsigned dmg/AppImage/deb + gated signing; CI-UNVERIFIED until a runner executes it", "worktree": ".wt/W-04", "pr": null}
+{"ticket": "W-02", "workstream": "\u00a72", "agent": "Astra-6", "event": "state", "state": "merged", "summary": "Logical/Physical types, hardlinks once, unreadable dirs, dup-finder hardening; 14+4 tests; scan +7% at 100k", "worktree": ".wt/W-02", "pr": null, "ts": "2026-10-22T17:30:00Z"}
+{"ticket": "W-02", "event": "metric", "metric": "tests_unit", "value": 15, "bench": "cargo_test", "ts": "2026-10-22T17:30:00Z"}
+{"ticket": "W-02", "event": "metric", "metric": "scan_100k_wall_s", "value": 2.42, "bench": "scan_100k_after_w02", "ts": "2026-10-22T17:30:00Z"}
+{"ticket": "W-06", "workstream": "\u00a73", "agent": "orch", "event": "state", "state": "queued", "summary": "cancel/snapshot/treemap cache: needs D3+D4 debates first", "ts": "2026-10-22T17:30:00Z"}
+{"ticket": "W-07", "workstream": "\u00a74", "agent": "DeepSeek", "event": "state", "state": "queued", "summary": "macOS TCC detection + deep link", "ts": "2026-10-22T17:30:00Z"}
+{"ticket": "W-08", "workstream": "\u00a76", "agent": "DeepSeek", "event": "state", "state": "queued", "summary": "tools/fixture-gen + CI", "ts": "2026-10-22T17:30:00Z"}

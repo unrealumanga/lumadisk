@@ -77,3 +77,6 @@
   are counted (`duplicate_read_errors`) and shown.
 - **Default ordering:** `files` is sorted by counted physical size (D2 default); logical mode uses
   an O(n) top-k selection per frame instead of re-sorting (no index invalidation).
+
+## Correction to brief §2.1 (orchestrator, 2026-10-22, from W-02)
+- Brief said Windows physical size = `GetCompressedFileSizeW`. For an ordinary uncompressed, non-sparse file that API returns the logical size (Microsoft docs; W-02 measured 5000 B vs AllocationSize 8192). Using it would make physical == logical for most files and void D2. W-02 uses AllocationSize instead; GCFSW kept as a test cross-check. Brief is wrong here; code is right.
