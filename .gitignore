@@ -3,3 +3,4 @@
 /.vscode
 *.pdb
 .claude/worktrees/
+.wt/
