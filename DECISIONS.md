@@ -80,3 +80,8 @@
 
 ## Correction to brief §2.1 (orchestrator, 2026-10-22, from W-02)
 - Brief said Windows physical size = `GetCompressedFileSizeW`. For an ordinary uncompressed, non-sparse file that API returns the logical size (Microsoft docs; W-02 measured 5000 B vs AllocationSize 8192). Using it would make physical == logical for most files and void D2. W-02 uses AllocationSize instead; GCFSW kept as a test cross-check. Brief is wrong here; code is right.
+
+## W-08 — Edge-case fixture generator (issue #8, 2026-10-22)
+- **No new dependency.** Generator is `tools/fixturegen.rs` (std only), included by path from both the CLI `tools/fixture-gen.rs` and `tests/fixtures.rs`. The CLI is gated behind an empty cargo feature `fixture-gen` (`required-features`), so `cargo build --release` never builds it; run it with the alias `cargo fixture-gen --case <name> --out <dir>` (`.cargo/config.toml`).
+- Expected totals/counts come from the generator's `Manifest`, never from the scanner. Environment-dependent facts (case or Unicode folding) are probed on the target filesystem at generation time. Cases that cannot be built (no symlink privilege, root/admin defeating a deny) print `SKIPPED` and pass; stubs and heavy presets are `#[ignore]`.
+- CI: `tests/fixtures.rs` runs inside the existing `cargo test --locked` step on all four runners; no workflow change.

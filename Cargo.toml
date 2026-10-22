@@ -30,3 +30,16 @@ strip = "symbols"
 [[bench]]
 name = "scan"
 harness = false
+
+# W-08: edge-case fixture generator CLI; opt-in so it never joins the default app build.
+[features]
+fixture-gen = []
+
+[[bin]]
+name = "lumadisk"
+path = "src/main.rs"
+
+[[bin]]
+name = "fixture-gen"
+path = "tools/fixture-gen.rs"
+required-features = ["fixture-gen"]
