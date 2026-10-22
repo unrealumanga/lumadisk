@@ -80,3 +80,20 @@
 
 ## Correction to brief §2.1 (orchestrator, 2026-10-22, from W-02)
 - Brief said Windows physical size = `GetCompressedFileSizeW`. For an ordinary uncompressed, non-sparse file that API returns the logical size (Microsoft docs; W-02 measured 5000 B vs AllocationSize 8192). Using it would make physical == logical for most files and void D2. W-02 uses AllocationSize instead; GCFSW kept as a test cross-check. Brief is wrong here; code is right.
+
+## D4 — Treemap aggregation: directory hierarchy + per-directory "other files" tile; cap keyed to minimum tile PIXEL AREA (not file/tile count)
+- **Date:** 2026-10-22 · **Trigger:** one-way door on the data model/UX; two+ credible options (dir / flat-threshold / by-type).
+- **My prior (before Round 1):** aggregate by directory first, then pixel area; cap ~ visible-tile budget.
+- **Position A / B:** A = dir hierarchy + residual tiles, per-frame culling walk, layout once per snapshot. B = same, drill-down per current directory. (Positions agree.)
+- **Model mapping:** A = Claude opus · B = codex. Not randomized (no Round 2).
+- **Round 2:** skipped per 7.7. Agreement is weak evidence; matches prior (2 of 2 so far: debates are not yet earning their cost).
+- **Disconfirming test:** none yet. Both would flip if filtered re-layout at 10M files exceeds ~300 ms or users select mainly by type/age.
+- **Outcome:** ADJUDICATED · **Scores:** reversibility 3/5 · evidence 3/5 · failure-severity 5/5 (aggregates honest by construction) · brief 5/5 · maintainer 4/5 · impl 3/5
+- **Ruling:** Hierarchical layout once per snapshot; each tile is exactly a file, a directory, or "N files, X GB in <dir>" (clickable, expands to a list). Replaces the 1,500-file extension cap. Extension becomes colour + filter; a cross-directory "by type" list view must exist as a complement (both models' shared objection: cleanup targets cut across directories). Filters re-layout on change, never per frame.
+- **Revisit if:** filtered re-layout at 1M files >300 ms, or testers cannot find cross-directory cleanup targets.
+
+## D3 — UI/scanner handoff: IN PROGRESS (positions differ)
+- **My prior:** arc-swap snapshot + atomic cancel token.
+- **Position A:** hybrid, per-directory deltas on a bounded channel -> aggregator thread owns the tree -> arc-swap bounded view every 50-100 ms. **Position B:** bounded channel of sealed delta batches folded directly into UI-owned state under a per-frame budget (aggregator only if profiling fails).
+- **Shared:** sealed per-directory records, sequence/counter check before marking "complete", cancel-aware sends. Disagreement in one sentence: does the extra aggregator + snapshot layer pay for itself vs folding in the UI under a frame budget? Both name the same test: UI fold cost at 10M entries, and old-snapshot drop cost on the UI thread.
+- **Disconfirming test:** running as exp-d3 (see events). Outcome pending.

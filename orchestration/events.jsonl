@@ -21,3 +21,8 @@
 {"ticket": "W-06", "workstream": "\u00a73", "agent": "orch", "event": "state", "state": "queued", "summary": "cancel/snapshot/treemap cache: needs D3+D4 debates first", "ts": "2026-10-22T17:30:00Z"}
 {"ticket": "W-07", "workstream": "\u00a74", "agent": "DeepSeek", "event": "state", "state": "queued", "summary": "macOS TCC detection + deep link", "ts": "2026-10-22T17:30:00Z"}
 {"ticket": "W-08", "workstream": "\u00a76", "agent": "DeepSeek", "event": "state", "state": "queued", "summary": "tools/fixture-gen + CI", "ts": "2026-10-22T17:30:00Z"}
+{"ticket": "D4", "event": "decision", "decision": "D4", "note": "dir hierarchy + pixel-area cap, ADJUDICATED", "ts": "2026-10-22T18:00:00Z"}
+{"ticket": "D3", "event": "debate", "debate": "D3", "round": 1, "positions": ["A", "B"], "ts": "2026-10-22T18:00:00Z"}
+{"ticket": "E-D3", "workstream": "\u00a73", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "experiment: UI-fold vs aggregator+arc-swap at 10M (.wt/E-D3)", "worktree": ".wt/E-D3", "pr": null, "ts": "2026-10-22T18:00:00Z"}
+{"ticket": "W-07", "workstream": "\u00a74", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "TCC detection + deep link", "worktree": ".wt/W-07", "pr": null, "ts": "2026-10-22T18:00:00Z"}
+{"ticket": "W-08", "workstream": "\u00a76", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "fixture-gen + fixtures tests", "worktree": ".wt/W-08", "pr": null, "ts": "2026-10-22T18:00:00Z"}

@@ -5,10 +5,11 @@
 - §1 W-04 [merged] DeepSeek: unsigned dmg/AppImage/deb + gated signing; CI-UNVERIFIED until a runner executes it
 - §1 W-05 [blocked] user: signing needs Apple acct, HSM cert, VMs
 - §2 W-02 [merged] Astra-6: Logical/Physical types, hardlinks once, unreadable dirs, dup-finder hardening; 14+4 tests; scan +7% at 100k
+- §3 E-D3 [in_flight] DeepSeek: experiment: UI-fold vs aggregator+arc-swap at 10M (.wt/E-D3)
 - §3 W-06 [queued] orch: cancel/snapshot/treemap cache: needs D3+D4 debates first
-- §4 W-07 [queued] DeepSeek: macOS TCC detection + deep link
+- §4 W-07 [in_flight] DeepSeek: TCC detection + deep link
 - §5 W-03 [merged] DeepSeek: NSFileManager (macOS, untested) + 50-batch trash; Linux shell path is test-only
-- §6 W-08 [queued] DeepSeek: tools/fixture-gen + CI
+- §6 W-08 [in_flight] DeepSeek: fixture-gen + fixtures tests
 
 Metrics:
 - cargo_test/tests_unit = 15
