@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LumaDisk
+Comment=Fast, private disk space analyzer
+Exec=lumadisk
+Icon=lumadisk
+Categories=Utility;System;
+Terminal=false
