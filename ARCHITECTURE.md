@@ -23,7 +23,7 @@ No hidden/pseudo-fs exclusion beyond dotfile toggle. No `(dev,ino)` visited trac
 `paint_heatmap` runs **per frame**: groups first 1,500 filtered indices by extension, calls `treemap::layout` (binary split, not squarified) for groups and again per group. Hard cap = 1,500 tiles. No layout caching. `filtered_indices()` also recomputed per frame (O(n) over all files).
 
 ## Deletion / reveal (README-claim audit)
-- Trash: `trash` crate 5.2.6. Windows = native; Linux = in-process freedesktop impl (crate also has a `Command::new(trash)` path at freedesktop.rs:1410, reachable condition TBD).
+- Trash: `trash` crate 5.2.6. Windows = native; Linux = in-process freedesktop impl (the crate's `Command::new(trash)` at freedesktop.rs:1410 is `#[cfg(test)]`-only: unreachable, verified W-03).
 - **macOS: crate default `DeleteMethod::Finder` = spawns `osascript`.** This contradicts the README "no command shell" claim, is an AV/behavioural signal, and triggers an Automation (Apple Events) TCC prompt. Fix: `set_delete_method(NsFileManager)`.
 - `showfile` on Linux uses D-Bus (gio/zbus feature), not a shell. Verify per feature set.
 - "Nothing is permanently deleted": `move_selected` falls back to copy + `remove_file` (permanent delete of source after copy; no hash verify). Soft contradiction — track in §2.
