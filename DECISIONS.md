@@ -31,3 +31,16 @@
 - D6 HSM vendor: no prior; needs UAE availability research.
 - D7 Linux: AppImage primary, .deb secondary.
 - Order of need: D2 (WS2a, now), D3 and D4 (WS3), D1/D5-D7 later. Debates run so far: 0 of 3 this session.
+
+## D2 — Default displayed size: PHYSICAL (logical one click away, both always in detail panel)
+- **Date:** 2026-10-22
+- **Trigger:** one-way-ish door (types and UI baked on it); two defensible defaults; wrong default erodes trust.
+- **My prior (before Round 1):** physical.
+- **Position A / B:** A = physical (+ dup finder matches logical, reports physical savings; flags "may free less"). B = physical (detail panel shows logical).
+- **Model mapping (revealed after ruling):** A = Claude opus · B = codex (OpenAI). A/B order not randomized: no Round 2 was run.
+- **Round 2 movement:** skipped per 7.7 (positions agree). Agreement is weak evidence (7.5), and it matches my prior, so this debate added little; noting for the "theatre" check (1 of 1 matched prior).
+- **Disconfirming test:** none run. Cheap candidate: compare scan root total vs volume used space on a real disk, for both sizes.
+- **Outcome:** ADJUDICATED
+- **Scores (physical):** reversibility 4/5 · evidence 3/5 · failure-severity 4/5 (sums checkable vs volume) · brief-compliance 5/5 · maintainer-cost 4/5 · impl-cost 3/5
+- **Ruling:** Physical default, with each inode counted once. Both models independently raised the same two caveats, which become requirements: (1) physical != reclaimable (clones, snapshots, Trash not emptied), so UI carries a "may free less" indicator; (2) Explorer/Finder show logical, so label the number "space on disk" and show logical beside it. Claude-side idea worth a later ticket: a third "exclusively reclaimable" figure.
+- **Revisit if:** testers keep checking totals against Explorer/Finder and call them wrong, or logical vs physical differ <2% on typical disks (then the simpler number wins).

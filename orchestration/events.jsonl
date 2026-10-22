@@ -11,3 +11,5 @@
 {"ts": "2026-10-22T15:00:00Z", "ticket": "W-03", "workstream": "\u00a75", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "NSFileManager trash + batching (.wt/W-03)", "worktree": ".wt/W-03", "pr": null}
 {"ts": "2026-10-22T15:00:00Z", "ticket": "W-04", "workstream": "\u00a71", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "unsigned dmg/AppImage/deb CI skeleton (.wt/W-04)", "worktree": ".wt/W-04", "pr": null}
 {"ts": "2026-10-22T15:00:00Z", "ticket": "D2", "workstream": "\u00a72", "agent": "orch", "event": "debate", "debate": "D2", "round": 1, "positions": ["A", "B"]}
+{"ticket": "D2", "event": "decision", "decision": "D2", "note": "physical default, ADJUDICATED", "ts": "2026-10-22T15:30:00Z"}
+{"ticket": "W-02", "workstream": "\u00a72", "agent": "Astra-6", "event": "state", "state": "in_flight", "summary": "size types + tree model (.wt/W-02)", "worktree": ".wt/W-02", "pr": null, "ts": "2026-10-22T15:30:00Z"}
