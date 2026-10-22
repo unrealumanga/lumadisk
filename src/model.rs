@@ -167,6 +167,23 @@ pub enum DirState {
     Unreadable(ErrorClass),
 }
 
+impl DirState {
+    /// UI wording. A permission refusal is never described as "empty": the contents are unknown.
+    pub fn describe(&self) -> String {
+        match self {
+            Self::Read => "readable".to_owned(),
+            Self::Unreadable(ErrorClass::PermissionDenied) => {
+                "unreadable (permission denied, contents unknown - not empty)".to_owned()
+            }
+            Self::Unreadable(ErrorClass::NotFound) => {
+                "unreadable (vanished during scan)".to_owned()
+            }
+            Self::Unreadable(ErrorClass::Other(kind)) => format!("unreadable ({kind})"),
+            Self::Unreadable(ErrorClass::Unknown) => "unreadable (unknown error)".to_owned(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct DirRecord {
     pub path: PathBuf,

@@ -3,4 +3,5 @@
 pub mod fsinfo;
 pub mod model;
 pub mod scanner;
+pub mod tcc;
 pub mod treemap;
