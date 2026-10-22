@@ -34,6 +34,12 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # Signing inputs: absent until credentials exist (DECISIONS.md D6); steps gated on them skip.
+    env:
+      WIN_SIGN_PFX_BASE64: ${{ secrets.WIN_SIGN_PFX_BASE64 }}
+      WIN_SIGN_PFX_PASSWORD: ${{ secrets.WIN_SIGN_PFX_PASSWORD }}
+      WIN_SIGN_TIMESTAMP_URL: ${{ vars.WIN_SIGN_TIMESTAMP_URL }} # TODO(D6): RFC3161 URL from chosen vendor
+
     steps:
       - uses: actions/checkout@v5
 
@@ -58,6 +64,24 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release --locked
+
+      - name: Sign Windows binary (gated)
+        if: runner.os == 'Windows' && env.WIN_SIGN_PFX_BASE64 != '' && env.WIN_SIGN_TIMESTAMP_URL != ''
+        shell: pwsh
+        run: |
+          # Placeholder flow for a PFX cert; revisit if D6 picks an HSM/cloud signer (different tool args).
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\sign.pfx", [Convert]::FromBase64String($env:WIN_SIGN_PFX_BASE64))
+          $st = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1
+          & $st.FullName sign /fd SHA256 /f "$env:RUNNER_TEMP\sign.pfx" /p $env:WIN_SIGN_PFX_PASSWORD /tr $env:WIN_SIGN_TIMESTAMP_URL /td SHA256 target/release/lumadisk.exe
+          if ($LASTEXITCODE -ne 0) { throw 'signtool sign failed' }
+          Remove-Item "$env:RUNNER_TEMP\sign.pfx" -Force
+          & $st.FullName verify /pa /v target/release/lumadisk.exe
+          if ($LASTEXITCODE -ne 0) { throw 'signtool verify failed' }
+
+      - name: Note Windows signing skipped
+        if: runner.os == 'Windows' && (env.WIN_SIGN_PFX_BASE64 == '' || env.WIN_SIGN_TIMESTAMP_URL == '')
+        shell: pwsh
+        run: Write-Host 'SKIP Windows signing (WIN_SIGN_PFX_BASE64 / WIN_SIGN_TIMESTAMP_URL not set). Artifact is UNSIGNED.'
 
       - name: Package Windows app
         if: runner.os == 'Windows'
@@ -108,4 +132,130 @@ jobs:
           path: |
             ${{ matrix.package }}
             ${{ matrix.package }}.sha256
+          if-no-files-found: error
+
+  linux-packages:
+    name: Linux AppImage + deb (unsigned)
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux desktop libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgl1-mesa-dev
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Fetch appimagetool
+        run: |
+          # Pinned tag + sha256 (trust-on-first-use: hash computed by the orchestrator 2026-10-22 from the 1.9.0 release asset).
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage
+          echo "46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1  $RUNNER_TEMP/appimagetool" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
+
+      - name: Build AppImage and deb
+        run: bash packaging/linux/build.sh
+
+      - name: Inspect deb and exercise launcher wrapper
+        run: |
+          dpkg-deb --info dist/lumadisk-linux-x64.deb
+          dpkg-deb --contents dist/lumadisk-linux-x64.deb
+          # Stub binary proves the wrapper executes; a real GUI launch is not tested here.
+          LUMADISK_BIN=/bin/true sh packaging/linux/lumadisk-launcher
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lumadisk-linux-packages
+          path: |
+            dist/lumadisk-linux-x64.AppImage*
+            dist/lumadisk-linux-x64.deb*
+          if-no-files-found: error
+
+  macos-universal:
+    name: macOS universal .dmg
+    needs: build
+    runs-on: macos-15
+    # Signing inputs: absent until Apple Developer credentials exist; gated steps skip.
+    env:
+      APPLE_CERT_P12_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+      APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+      APPLE_SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
+      APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Build both architectures
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+
+      - name: Create universal .app
+        run: bash packaging/macos/build.sh app
+
+      - name: Import signing certificate (gated)
+        if: env.APPLE_CERT_P12_BASE64 != '' && env.APPLE_SIGN_IDENTITY != ''
+        run: |
+          KC="$RUNNER_TEMP/sign.keychain-db"; KCPW=$(uuidgen)
+          echo "$APPLE_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KCPW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCPW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$APPLE_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC"
+          security list-keychains -d user -s "$KC" login.keychain
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Codesign .app (gated)
+        if: env.APPLE_CERT_P12_BASE64 != '' && env.APPLE_SIGN_IDENTITY != ''
+        run: |
+          codesign --force --options runtime --timestamp \
+            --entitlements packaging/macos/entitlements.plist \
+            --sign "$APPLE_SIGN_IDENTITY" dist/LumaDisk.app
+          codesign --verify --strict --verbose=2 dist/LumaDisk.app
+
+      - name: Note codesign skipped
+        if: env.APPLE_CERT_P12_BASE64 == '' || env.APPLE_SIGN_IDENTITY == ''
+        run: echo "SKIP codesign (APPLE_CERT_P12_BASE64 / APPLE_SIGN_IDENTITY not set). App is UNSIGNED."
+
+      - name: Create .dmg
+        run: bash packaging/macos/build.sh dmg
+
+      - name: Codesign .dmg (gated)
+        if: env.APPLE_CERT_P12_BASE64 != '' && env.APPLE_SIGN_IDENTITY != ''
+        run: codesign --force --timestamp --sign "$APPLE_SIGN_IDENTITY" dist/lumadisk-macos-universal.dmg
+
+      - name: Notarize, staple, verify (gated)
+        if: env.APPLE_CERT_P12_BASE64 != '' && env.APPLE_SIGN_IDENTITY != '' && env.APPLE_API_KEY_P8_BASE64 != '' && env.APPLE_API_KEY_ID != '' && env.APPLE_API_ISSUER_ID != ''
+        run: |
+          echo "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          xcrun notarytool submit dist/lumadisk-macos-universal.dmg \
+            --key "$RUNNER_TEMP/AuthKey.p8" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID" --wait
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
+          xcrun stapler staple dist/lumadisk-macos-universal.dmg
+          spctl -a -vvv -t install dist/lumadisk-macos-universal.dmg
+          xcrun stapler validate dist/lumadisk-macos-universal.dmg
+          shasum -a 256 dist/lumadisk-macos-universal.dmg > dist/lumadisk-macos-universal.dmg.sha256
+
+      - name: Note notarization skipped
+        if: env.APPLE_CERT_P12_BASE64 == '' || env.APPLE_SIGN_IDENTITY == '' || env.APPLE_API_KEY_P8_BASE64 == '' || env.APPLE_API_KEY_ID == '' || env.APPLE_API_ISSUER_ID == ''
+        run: echo "SKIP notarize/staple/spctl/stapler validate (Apple signing or API-key secrets not set). dmg is UNSIGNED and NOT notarized."
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lumadisk-macos-universal
+          path: |
+            dist/lumadisk-macos-universal.dmg
+            dist/lumadisk-macos-universal.dmg.sha256
           if-no-files-found: error

@@ -1,0 +1,26 @@
+#!/bin/sh
+# Launcher: checks for runtime libraries the GUI loads at startup and prints an actionable
+# message instead of a raw loader/panic error. Why a shell wrapper: eframe dlopens
+# libxkbcommon/GL at runtime, so the failure is an opaque panic; a wrapper works identically
+# for AppImage and .deb and needs no extra Rust code (src/ untouched).
+# Real binary sits next to this script (AppImage: usr/bin; deb: /usr/lib/lumadisk).
+HERE=$(dirname "$(readlink -f "$0")")
+BIN="${LUMADISK_BIN:-$HERE/lumadisk-bin}"
+
+have_lib() {
+  # $1 = soname. ldconfig may not be on PATH for non-root users.
+  { ldconfig -p 2>/dev/null || /sbin/ldconfig -p 2>/dev/null; } | grep -q "$1" && return 0
+  ls /usr/lib*/"$1"* /usr/lib/*/"$1"* /lib/*/"$1"* >/dev/null 2>&1
+}
+
+missing=""
+have_lib libxkbcommon.so.0 || missing="  libxkbcommon (Debian/Ubuntu: libxkbcommon0, Fedora: libxkbcommon)"
+if ! have_lib libGL.so.1 && ! have_lib libEGL.so.1; then
+  missing="$missing
+  OpenGL/EGL (Debian/Ubuntu: libgl1 or libegl1, Fedora: mesa-libGL)"
+fi
+if [ -n "$missing" ] && [ -z "$LUMADISK_SKIP_LIB_CHECK" ]; then
+  printf 'LumaDisk cannot start: missing system libraries:\n%s\nInstall them and retry (LUMADISK_SKIP_LIB_CHECK=1 bypasses this check).\n' "$missing" >&2
+  exit 127
+fi
+exec "$BIN" "$@"
