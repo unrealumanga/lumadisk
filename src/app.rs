@@ -13,6 +13,41 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+const TRASH_BATCH_SIZE: usize = 50;
+const TRASH_BATCH_PAUSE: Duration = Duration::from_millis(50);
+
+fn trash_batches(paths: &[PathBuf], size: usize) -> Vec<&[PathBuf]> {
+    paths.chunks(size.max(1)).collect()
+}
+
+fn trash_context() -> trash::TrashContext {
+    #[allow(unused_mut)]
+    let mut context = trash::TrashContext::default();
+    // The default macOS method (Finder) spawns `osascript`; use the in-process API.
+    #[cfg(target_os = "macos")]
+    {
+        use trash::macos::{DeleteMethod, TrashContextExtMacos};
+        context.set_delete_method(DeleteMethod::NsFileManager);
+    }
+    context
+}
+
+/// Trashes in batches with a short pause between them; stops at the first error.
+fn trash_in_batches(paths: &[PathBuf]) -> Result<(), String> {
+    let context = trash_context();
+    let batches = trash_batches(paths, TRASH_BATCH_SIZE);
+    let last = batches.len().saturating_sub(1);
+    for (index, batch) in batches.into_iter().enumerate() {
+        context
+            .delete_all(batch)
+            .map_err(|error| error.to_string())?;
+        if index != last {
+            std::thread::sleep(TRASH_BATCH_PAUSE);
+        }
+    }
+    Ok(())
+}
+
 const BG: Color32 = Color32::from_rgb(9, 12, 17);
 const PANEL: Color32 = Color32::from_rgb(15, 19, 26);
 const PANEL_2: Color32 = Color32::from_rgb(20, 25, 34);
@@ -229,7 +264,7 @@ impl LumaDiskApp {
         }
         let (sender, receiver) = mpsc::channel();
         std::thread::spawn(move || {
-            let result = trash::delete_all(&paths).map_err(|error| error.to_string());
+            let result = trash_in_batches(&paths);
             let _ = sender.send(TrashOutcome { paths, result });
         });
         self.trash_receiver = Some(receiver);
@@ -1451,4 +1486,22 @@ fn ellipsize(text: &str, max_chars: usize) -> String {
     }
     let keep = max_chars.saturating_sub(1);
     format!("{}…", text.chars().take(keep).collect::<String>())
+}
+
+#[cfg(test)]
+mod trash_batch_tests {
+    use super::trash_batches;
+    use std::path::PathBuf;
+
+    #[test]
+    fn batches_keep_order_and_sizes() {
+        let paths: Vec<PathBuf> = (0..125).map(|i| PathBuf::from(format!("f{i}"))).collect();
+        let batches = trash_batches(&paths, 50);
+        let sizes: Vec<usize> = batches.iter().map(|b| b.len()).collect();
+        assert_eq!(sizes, vec![50, 50, 25]);
+        let flat: Vec<PathBuf> = batches.concat();
+        assert_eq!(flat, paths);
+        assert!(trash_batches(&[], 50).is_empty());
+        assert_eq!(trash_batches(&paths, 0).len(), 125);
+    }
 }
