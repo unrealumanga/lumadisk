@@ -4,6 +4,7 @@
 )]
 
 mod app;
+mod fsinfo;
 mod model;
 mod scanner;
 mod treemap;

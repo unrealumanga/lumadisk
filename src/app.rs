@@ -1,5 +1,5 @@
 use crate::{
-    model::ScanResult,
+    model::{FileEntry, ScanResult, SizeMode},
     scanner::{self, ScanEvent},
     treemap,
 };
@@ -73,7 +73,7 @@ enum ColorMode {
 #[derive(Default)]
 struct Progress {
     files: usize,
-    bytes: u64,
+    bytes: crate::model::PhysicalSize,
     current: PathBuf,
     phase: &'static str,
 }
@@ -107,6 +107,7 @@ pub struct LumaDiskApp {
     age_index: usize,
     view: View,
     color_mode: ColorMode,
+    size_mode: SizeMode,
     selected: Option<usize>,
     selected_category: Option<String>,
     kept: HashSet<PathBuf>,
@@ -142,6 +143,7 @@ impl LumaDiskApp {
             age_index: 0,
             view: View::Heatmap,
             color_mode: ColorMode::Type,
+            size_mode: SizeMode::default(),
             selected: None,
             selected_category: None,
             kept: HashSet::new(),
@@ -199,13 +201,17 @@ impl LumaDiskApp {
                     self.receiver = None;
                     match result {
                         Ok(result) => {
-                            let message = format!(
+                            let mut message = format!(
                                 "Mapped {} files in {:.2}s",
                                 format_count(result.files.len()),
                                 result.elapsed_ms as f64 / 1000.0
                             );
+                            let unaccounted = result.unaccounted_note();
+                            if let Some(note) = &unaccounted {
+                                message.push_str(&format!(". {note}"));
+                            }
                             self.result = Some(result);
-                            self.notify(message, false);
+                            self.notify(message, unaccounted.is_some());
                         }
                         Err(error) => self.notify(error, true),
                     }
@@ -227,13 +233,14 @@ impl LumaDiskApp {
             [0, 1024 * 1024, 100 * 1024 * 1024, 1024 * 1024 * 1024][self.min_size_index] as u64;
         let now = unix_now();
         let max_age = [i64::MAX, 30 * 86_400, 365 * 86_400, 3 * 365 * 86_400][self.age_index];
+        let mode = self.size_mode;
         result
             .files
             .iter()
             .enumerate()
             .filter(|(_, file)| {
                 (self.extension_filter == "All types" || file.extension == self.extension_filter)
-                    && file.size >= min_size
+                    && (min_size == 0 || own_bytes(file, mode).unwrap_or(0) >= min_size)
                     && (max_age == i64::MAX
                         || file.modified_unix > 0
                             && now.saturating_sub(file.modified_unix) <= max_age)
@@ -247,6 +254,26 @@ impl LumaDiskApp {
             })
             .map(|(index, _)| index)
             .collect()
+    }
+
+    /// The `limit` largest of `indices` in the current size mode, largest first.
+    /// `files` is pre-sorted by physical size, so the default mode needs no work; logical
+    /// mode does an O(n) selection plus a sort of only `limit` items (no per-frame full sort).
+    fn largest_first(&self, indices: &[usize], limit: usize) -> Vec<usize> {
+        let Some(result) = &self.result else {
+            return Vec::new();
+        };
+        if self.size_mode == SizeMode::Physical {
+            return indices.iter().take(limit).copied().collect();
+        }
+        let mut indices = indices.to_vec();
+        let key = |index: &usize| std::cmp::Reverse(result.files[*index].counted_logical());
+        if indices.len() > limit {
+            indices.select_nth_unstable_by_key(limit, key);
+            indices.truncate(limit);
+        }
+        indices.sort_by_key(key);
+        indices
     }
 
     fn remove_file_from_result(&mut self, path: &Path) {
@@ -518,13 +545,14 @@ impl LumaDiskApp {
         if self.result.is_none() {
             return;
         }
+        let mode = self.size_mode;
         let category_summary = self.selected_category.clone().map(|extension| {
             let indices = self.filtered_indices();
             let files: Vec<(PathBuf, u64)> = indices
                 .into_iter()
                 .filter_map(|index| self.result.as_ref()?.files.get(index))
                 .filter(|file| file.extension == extension)
-                .map(|file| (file.path.clone(), file.size))
+                .map(|file| (file.path.clone(), counted(file, mode)))
                 .collect();
             let total_bytes = files.iter().map(|(_, size)| *size).sum();
             let paths: Vec<PathBuf> = files.into_iter().map(|(path, _)| path).collect();
@@ -561,13 +589,33 @@ impl LumaDiskApp {
                         ui.vertical(|ui| {
                             ui.label(RichText::new(&file.name).strong().color(TEXT));
                             ui.label(
-                                RichText::new(format_bytes(file.size))
+                                RichText::new(size_text(&file, mode))
                                     .size(13.0)
                                     .color(ACCENT),
                             );
                         });
                     });
                     ui.add_space(14.0);
+                    // D2: both sizes always shown in the detail panel.
+                    detail_row(
+                        ui,
+                        "Size on disk",
+                        &file
+                            .physical
+                            .map_or_else(|| "unknown".to_owned(), |size| format_bytes(size.0)),
+                    );
+                    detail_row(ui, "Logical size", &format_bytes(file.logical.0));
+                    if file.links > 1 {
+                        detail_row(
+                            ui,
+                            "Hardlinks",
+                            &format!(
+                                "{} names{}",
+                                file.links,
+                                if file.extra_link { ", counted elsewhere" } else { ", counted here" }
+                            ),
+                        );
+                    }
                     detail_row(ui, "Type", &file.extension.to_ascii_uppercase());
                     detail_row(ui, "Modified", &relative_age(file.modified_unix));
                     detail_row(
@@ -809,9 +857,9 @@ impl LumaDiskApp {
             ui.add_space(8.0);
             ui.label(
                 RichText::new(format!(
-                    "{} files  /  {}",
+                    "{} files  /  {} on disk",
                     format_count(self.progress.files),
-                    format_bytes(self.progress.bytes)
+                    format_bytes(self.progress.bytes.0)
                 ))
                 .color(ACCENT),
             );
@@ -831,10 +879,68 @@ impl LumaDiskApp {
         }
     }
 
-    fn metrics(&self, ui: &mut egui::Ui) {
+    fn metrics(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("SIZES").size(10.0).strong().color(MUTED));
+            ui.selectable_value(
+                &mut self.size_mode,
+                SizeMode::Physical,
+                "Physical (on disk)",
+            );
+            ui.selectable_value(&mut self.size_mode, SizeMode::Logical, "Logical");
+            if let Some(result) = self.result.as_ref()
+                && let Some(note) = result.unaccounted_note()
+            {
+                let mut hover = String::from(
+                    "These bytes could not be measured. They are UNACCOUNTED (unknown size), \
+                     not zero, so real usage is higher than the totals shown.",
+                );
+                for dir in result.unreadable_dirs().take(5) {
+                    hover.push_str(&format!("\n{}  ({:?})", dir.path.display(), dir.state));
+                }
+                ui.add_space(12.0);
+                ui.label(RichText::new(note).size(11.0).color(DANGER))
+                    .on_hover_text(hover);
+            }
+        });
+        ui.add_space(6.0);
+        let mode = self.size_mode;
         let result = self.result.as_ref().unwrap();
         let filtered = self.filtered_indices();
-        let filtered_bytes: u64 = filtered.iter().map(|index| result.files[*index].size).sum();
+        let filtered_bytes: u64 = filtered
+            .iter()
+            .map(|index| counted(&result.files[*index], mode))
+            .sum();
+        let (primary, secondary) = match mode {
+            SizeMode::Physical => (
+                format!("{} on disk", format_bytes(result.total_physical.0)),
+                format!("{} logical", format_bytes(result.total_logical.0)),
+            ),
+            SizeMode::Logical => (
+                format!("{} logical", format_bytes(result.total_logical.0)),
+                format!("{} on disk", format_bytes(result.total_physical.0)),
+            ),
+        };
+        let mut file_detail = format!(
+            "{} unreadable  /  {} hardlinks counted once",
+            result.file_error_count, result.hardlink_extra_count
+        );
+        if result.physical_unknown_count > 0 {
+            file_detail.push_str(&format!(
+                "  /  {} size unknown",
+                result.physical_unknown_count
+            ));
+        }
+        let mut duplicate_detail = format!(
+            "{} exact groups, space on disk (may free less)",
+            result.duplicate_groups.len()
+        );
+        if result.duplicate_read_errors > 0 {
+            duplicate_detail.push_str(&format!(
+                "  /  {} unreadable, not checked",
+                result.duplicate_read_errors
+            ));
+        }
         let width = ((ui.available_width() - 24.0) / 3.0).max(120.0);
         ui.horizontal(|ui| {
             metric_card(
@@ -842,7 +948,7 @@ impl LumaDiskApp {
                 width,
                 "VISIBLE SIZE",
                 &format_bytes(filtered_bytes),
-                &format!("{} total scanned", format_bytes(result.total_bytes)),
+                &format!("{primary} scanned  /  {secondary}"),
                 ACCENT,
             );
             metric_card(
@@ -850,15 +956,15 @@ impl LumaDiskApp {
                 width,
                 "FILES",
                 &format_count(filtered.len()),
-                &format!("{} skipped", result.skipped),
+                &file_detail,
                 Color32::from_rgb(120, 146, 255),
             );
             metric_card(
                 ui,
                 width,
                 "DUPLICATE SPACE",
-                &format_bytes(result.duplicate_bytes()),
-                &format!("{} exact groups", result.duplicate_groups.len()),
+                &format_bytes(result.duplicate_bytes().0),
+                &duplicate_detail,
                 Color32::from_rgb(255, 174, 87),
             );
         });
@@ -896,9 +1002,11 @@ impl LumaDiskApp {
     }
 
     fn paint_heatmap(&mut self, ui: &mut egui::Ui, rect: Rect, indices: &[usize]) {
+        let mode = self.size_mode;
+        let top = self.largest_first(indices, 1_500);
         let Some(result) = &self.result else { return };
         let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
-        for index in indices.iter().copied().take(1_500) {
+        for index in top {
             groups
                 .entry(result.files[index].extension.clone())
                 .or_default()
@@ -909,7 +1017,7 @@ impl LumaDiskApp {
             .map(|(extension, files)| {
                 let size = files
                     .iter()
-                    .map(|index| result.files[*index].size.max(1))
+                    .map(|index| counted(&result.files[*index], mode).max(1))
                     .sum();
                 (extension, files, size)
             })
@@ -983,7 +1091,7 @@ impl LumaDiskApp {
             }
             let file_weights: Vec<(usize, u64)> = file_indices
                 .iter()
-                .map(|index| (*index, result.files[*index].size.max(1)))
+                .map(|index| (*index, counted(&result.files[*index], mode).max(1)))
                 .collect();
             for (index, file_rect) in treemap::layout(&file_weights, content_rect) {
                 let file = &result.files[index];
@@ -1022,7 +1130,7 @@ impl LumaDiskApp {
                     ui.painter().text(
                         file_rect.min + Vec2::new(5.0, 19.0),
                         Align2::LEFT_TOP,
-                        format_bytes(file.size),
+                        size_text(file, mode),
                         FontId::proportional(10.0),
                         Color32::from_white_alpha(205),
                     );
@@ -1031,7 +1139,7 @@ impl LumaDiskApp {
                     ui.label(RichText::new(&file.name).strong());
                     ui.label(format!(
                         "{}  /  {}",
-                        format_bytes(file.size),
+                        size_text(file, mode),
                         file.extension.to_ascii_uppercase()
                     ));
                     ui.label(format!("Modified {}", relative_age(file.modified_unix)));
@@ -1069,12 +1177,13 @@ impl LumaDiskApp {
                 .color(MUTED),
         );
         ui.add_space(8.0);
-        let indices = self.filtered_indices();
+        let mode = self.size_mode;
+        let indices = self.largest_first(&self.filtered_indices(), 2_000);
         let mut clicked = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                for (rank, index) in indices.iter().copied().take(2_000).enumerate() {
+                for (rank, index) in indices.iter().copied().enumerate() {
                     let file = &self.result.as_ref().unwrap().files[index];
                     let selected = self.selected == Some(index);
                     let response = egui::Frame::new()
@@ -1099,9 +1208,7 @@ impl LumaDiskApp {
                                 ui.label(RichText::new(&file.name).color(TEXT));
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     ui.label(
-                                        RichText::new(format_bytes(file.size))
-                                            .strong()
-                                            .color(ACCENT),
+                                        RichText::new(size_text(file, mode)).strong().color(ACCENT),
                                     );
                                     ui.label(
                                         RichText::new(relative_age(file.modified_unix))
@@ -1141,8 +1248,23 @@ impl LumaDiskApp {
                 .size(11.0)
                 .color(MUTED),
         );
-        ui.add_space(10.0);
         let Some(result) = &self.result else { return };
+        if result.duplicate_read_errors > 0 {
+            ui.label(
+                RichText::new(format!(
+                    "{} candidate file{} could not be read and were not checked.",
+                    result.duplicate_read_errors,
+                    if result.duplicate_read_errors == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
+                ))
+                .size(11.0)
+                .color(DANGER),
+            );
+        }
+        ui.add_space(10.0);
         if !self.find_duplicates || result.duplicate_groups.is_empty() {
             let message = if self.find_duplicates {
                 "No exact duplicates found."
@@ -1173,15 +1295,24 @@ impl LumaDiskApp {
                                         .color(Color32::from_rgb(255, 174, 87)),
                                 );
                                 ui.label(
-                                    RichText::new(format!("{} copies", group.file_indices.len()))
-                                        .size(11.0)
-                                        .color(MUTED),
+                                    RichText::new(format!(
+                                        "{} copies  /  {} distinct on disk",
+                                        group.file_indices.len(),
+                                        group.distinct_storage
+                                    ))
+                                    .size(11.0)
+                                    .color(MUTED),
                                 );
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     ui.label(
                                         RichText::new(format!(
-                                            "{} reclaimable",
-                                            format_bytes(group.reclaimable())
+                                            "{}{} reclaimable on disk",
+                                            if group.physical_unknown {
+                                                "at least "
+                                            } else {
+                                                ""
+                                            },
+                                            format_bytes(group.reclaimable.0)
                                         ))
                                         .strong()
                                         .color(ACCENT),
@@ -1192,15 +1323,18 @@ impl LumaDiskApp {
                             for (copy_number, index) in
                                 group.file_indices.iter().copied().enumerate()
                             {
-                                let Some(file) = self
-                                    .result
-                                    .as_ref()
-                                    .and_then(|result| result.files.get(index))
-                                else {
+                                let Some(result) = self.result.as_ref() else {
+                                    continue;
+                                };
+                                let Some(file) = result.files.get(index) else {
                                     continue;
                                 };
                                 let label = if copy_number == 0 {
                                     "KEEP ORIGINAL"
+                                } else if group
+                                    .shares_storage_with_earlier(copy_number, &result.files)
+                                {
+                                    "ALREADY SHARES STORAGE (hardlink)"
                                 } else {
                                     "REVIEW COPY"
                                 };
@@ -1444,6 +1578,28 @@ fn format_bytes(bytes: u64) -> String {
         format!("{value:.0} {}", UNITS[unit])
     } else {
         format!("{value:.1} {}", UNITS[unit])
+    }
+}
+
+/// This path's own size in `mode` (`None` = physical size unknown). Used for filters/labels.
+fn own_bytes(file: &FileEntry, mode: SizeMode) -> Option<u64> {
+    match mode {
+        SizeMode::Logical => Some(file.logical.0),
+        SizeMode::Physical => file.physical.map(|size| size.0),
+    }
+}
+
+/// Bytes this path adds to totals/tile areas (0 for an extra hardlink or an unknown size).
+fn counted(file: &FileEntry, mode: SizeMode) -> u64 {
+    file.counted_bytes(mode).unwrap_or(0)
+}
+
+fn size_text(file: &FileEntry, mode: SizeMode) -> String {
+    let base = own_bytes(file, mode).map_or_else(|| "size unknown".to_owned(), format_bytes);
+    if file.extra_link {
+        format!("{base} (hardlink, counted once)")
+    } else {
+        base
     }
 }
 

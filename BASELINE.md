@@ -53,3 +53,22 @@ Notes:
   process so it does not inflate the number.
 - Observed: the per-frame cost at 1M is dominated by the full O(n) `filtered_indices` pass that runs
   every frame (the 1,500-tile layout itself is ~0.1 ms), and a search query makes it roughly 250 ms.
+
+## W-02 AFTER numbers (100k tree, same machine, 2026-10-22)
+
+A/B on the SAME freshly generated 100k tree: base = `git archive 718589e` built separately, W-02 =
+this branch, alternated 3 times each. Run 1 of each pair is warm-up noise (AV / cache after
+generation: base 3.86 s, W-02 3.91-4.23 s) and is excluded. Single machine, warm cache.
+
+| Metric | base (718589e) | W-02 | Delta |
+|---|---|---|---|
+| Scan wall time (dups off) | 2.265 / 2.267 s | 2.418 / 2.428 s | about +7% (+0.16 s) |
+| Peak RSS after scan | 58.1 / 60.3 MiB | 64.6 / 68.1 MiB | +4 to +8 MiB (bigger FileEntry + 3,906 DirRecords) |
+| Dup finder | 0.949 - 1.105 s | 0.976 - 1.217 s | within noise |
+| Post-scan frame p50 (filter + group + layout) | 0.576 - 0.595 ms | 0.531 - 0.535 ms | within noise |
+| Post-scan frame p50, query "e" | 15.3 - 18.1 ms | 16.0 - 16.7 ms | within noise |
+
+Totals reported by W-02 on this tree: logical 1047.0 MiB, physical 1189.0 MiB (+13.6%: 90% of files
+are 100 B - 4 KB, each rounded up to whole 4 KiB clusters), 0 unreadable, 0 unknown.
+The scan cost comes from one extra `GetFileInformationByHandleEx` call per already-open handle
+plus wider entries; the handle count per file is unchanged (std's `symlink_metadata` also opens one).

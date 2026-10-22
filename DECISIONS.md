@@ -44,3 +44,36 @@
 - **Scores (physical):** reversibility 4/5 · evidence 3/5 · failure-severity 4/5 (sums checkable vs volume) · brief-compliance 5/5 · maintainer-cost 4/5 · impl-cost 3/5
 - **Ruling:** Physical default, with each inode counted once. Both models independently raised the same two caveats, which become requirements: (1) physical != reclaimable (clones, snapshots, Trash not emptied), so UI carries a "may free less" indicator; (2) Explorer/Finder show logical, so label the number "space on disk" and show logical beside it. Claude-side idea worth a later ticket: a third "exclusively reclaimable" figure.
 - **Revisit if:** testers keep checking totals against Explorer/Finder and call them wrong, or logical vs physical differ <2% on typical disks (then the simpler number wins).
+
+## W-02 — Logical vs physical sizes, hardlinks, unreadable dirs (issue #4, 2026-10-22)
+- **Compile-fail proof via rustdoc `compile_fail` doctests, not trybuild.** Three doctests on
+  `LogicalSize` (`+`, `+=`, `Sum`) must fail to compile (E0308/E0277), next to a positive doctest
+  that same-type arithmetic compiles, so a typo cannot make them pass vacuously. No new dependency;
+  trybuild would add a dev-dep and a second compile per test for no extra guarantee here.
+- **Windows physical size = `FILE_STANDARD_INFO.AllocationSize`, NOT `GetCompressedFileSizeW`
+  (deviates from the brief, measured).** On this NTFS volume `GetCompressedFileSizeW` returns the
+  *logical* size for an ordinary file (5000-byte file -> 5000; AllocationSize -> 8192). Using it
+  would make "physical" silently equal logical for most files and D2's default meaningless. Both
+  report 0 for a fully sparse 100 MiB file and for an NTFS-compressed all-zero file. AllocationSize
+  matches Unix `st_blocks*512` semantics. Cost: one `CreateFileW(FILE_READ_ATTRIBUTES,
+  OPEN_REPARSE_POINT)` per file, the same handle count as std's `symlink_metadata` it replaces.
+  Known imprecision: tiny MFT-resident files report a few bytes (e.g. 16) though they use no
+  cluster. `GetCompressedFileSizeW` is kept as a test-only cross-check.
+- **std-only FFI (kernel32), no `windows-sys`.** Four functions and two structs; same reasoning as
+  the P0.2 harness. If the handle cannot be opened (sharing violation, e.g. pagefile.sys), logical
+  comes from std and physical/identity are recorded UNKNOWN (`physical_unknown_count`, shown in UI),
+  never defaulted to logical. Windows identity = (volume serial, 64-bit file index); on ReFS the
+  64-bit index is not guaranteed unique (FILE_ID_INFO is 128-bit): follow-up if ReFS matters.
+- **Hardlinks:** every name stays in the flat list (UI, trash and search need the paths); for each
+  (dev, ino) with links > 1 the lexicographically first scanned path is counted, the others get
+  `extra_link = true` and contribute 0 bytes to totals and tile areas (both logical and physical).
+  Deterministic regardless of jwalk's parallel order. Removing the counted name promotes another
+  scanned name, so totals stay correct after trashing.
+- **Not done (follow-up):** names outside the scan root. A file with links > in-scan names still
+  counts its full physical size, although deleting it frees nothing (D2 caveat 1, "may free less").
+- **Duplicate finder:** hashes one name per storage; a size bucket needs >= 2 distinct storages;
+  hardlink-only sets are not duplicates; hardlinked members of a real group are labelled "already
+  shares storage"; savings = physical, conservatively keeping the largest storage; read errors
+  are counted (`duplicate_read_errors`) and shown.
+- **Default ordering:** `files` is sorted by counted physical size (D2 default); logical mode uses
+  an O(n) top-k selection per frame instead of re-sorting (no index invalidation).
