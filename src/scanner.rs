@@ -136,7 +136,7 @@ fn is_hidden(path: &Path, root: &Path) -> bool {
         .any(|part| part.as_os_str().to_string_lossy().starts_with('.'))
 }
 
-fn find_duplicate_groups(files: &[FileEntry]) -> Vec<DuplicateGroup> {
+pub fn find_duplicate_groups(files: &[FileEntry]) -> Vec<DuplicateGroup> {
     let mut by_size: HashMap<u64, Vec<usize>> = HashMap::new();
     for (index, file) in files.iter().enumerate().filter(|(_, file)| file.size > 0) {
         by_size.entry(file.size).or_default().push(index);

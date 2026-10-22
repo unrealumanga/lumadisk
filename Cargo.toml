@@ -26,3 +26,7 @@ tempfile = "3.23.0"
 lto = "thin"
 codegen-units = 1
 strip = "symbols"
+
+[[bench]]
+name = "scan"
+harness = false
