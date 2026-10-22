@@ -7,7 +7,7 @@
 - §2 W-02 [merged] Astra-6: Logical/Physical types, hardlinks once, unreadable dirs, dup-finder hardening; 14+4 tests; scan +7% at 100k
 - §3 E-D3 [in_flight] DeepSeek: experiment: UI-fold vs aggregator+arc-swap at 10M (.wt/E-D3)
 - §3 W-06 [queued] orch: cancel/snapshot/treemap cache: needs D3+D4 debates first
-- §4 W-07 [in_flight] DeepSeek: TCC detection + deep link
+- §4 W-07 [merged] DeepSeek: TCC detect+banner (macOS UNVERIFIED; open_url may not open pane: fallback copy)
 - §5 W-03 [merged] DeepSeek: NSFileManager (macOS, untested) + 50-batch trash; Linux shell path is test-only
 - §6 W-08 [in_flight] DeepSeek: fixture-gen + fixtures tests
 

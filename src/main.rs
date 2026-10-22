@@ -7,6 +7,7 @@ mod app;
 mod fsinfo;
 mod model;
 mod scanner;
+mod tcc;
 mod treemap;
 
 fn main() -> eframe::Result {

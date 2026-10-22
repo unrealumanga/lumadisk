@@ -7,3 +7,4 @@
 - DeepSeek (W-03): precise, cited source lines (verified by orchestrator), honest about untested macOS path. Reliability: high.
 - DeepSeek (W-04): thorough, honest UNVERIFIED list; but left an unpinned download (orchestrator pinned sha256). Check supply-chain pins on review.
 - Astra-6 (W-02): high. Caught a wrong API in the brief by measuring, stated bench delta honestly, listed gaps + UNVERIFIED. Did not launch the GUI (UI unseen).
+- DeepSeek (W-07): high; flagged its own risk (webbrowser may not deliver the x-apple scheme). Claim 'NSWorkspace, no process' verified.

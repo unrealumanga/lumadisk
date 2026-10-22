@@ -81,6 +81,7 @@
 ## Correction to brief §2.1 (orchestrator, 2026-10-22, from W-02)
 - Brief said Windows physical size = `GetCompressedFileSizeW`. For an ordinary uncompressed, non-sparse file that API returns the logical size (Microsoft docs; W-02 measured 5000 B vs AllocationSize 8192). Using it would make physical == logical for most files and void D2. W-02 uses AllocationSize instead; GCFSW kept as a test cross-check. Brief is wrong here; code is right.
 
+<<<<<<< HEAD
 ## D4 — Treemap aggregation: directory hierarchy + per-directory "other files" tile; cap keyed to minimum tile PIXEL AREA (not file/tile count)
 - **Date:** 2026-10-22 · **Trigger:** one-way door on the data model/UX; two+ credible options (dir / flat-threshold / by-type).
 - **My prior (before Round 1):** aggregate by directory first, then pixel area; cap ~ visible-tile budget.
@@ -97,3 +98,9 @@
 - **Position A:** hybrid, per-directory deltas on a bounded channel -> aggregator thread owns the tree -> arc-swap bounded view every 50-100 ms. **Position B:** bounded channel of sealed delta batches folded directly into UI-owned state under a per-frame budget (aggregator only if profiling fails).
 - **Shared:** sealed per-directory records, sequence/counter check before marking "complete", cancel-aware sends. Disagreement in one sentence: does the extra aggregator + snapshot layer pay for itself vs folding in the UI under a frame budget? Both name the same test: UI fold cost at 10M entries, and old-snapshot drop cost on the UI thread.
 - **Disconfirming test:** running as exp-d3 (see events). Outcome pending.
+=======
+## W-07 macOS TCC / Full Disk Access (issue #6)
+- Detection is pure (`src/tcc.rs`, cfg-independent, tested on Windows with synthetic records): a protected home folder (single const `PROTECTED_HOME_RELATIVE`) is `Denied` if its directory record is `Unreadable(PermissionDenied)`, or `EmptySuspicious` if read with no files/subdirs while the home has other files. Denied is worded "NOT empty, contents unknown"; empty is worded "may be a silent block or truly empty".
+- UI: dismissible banner (macOS runtime check) naming `System Settings > Privacy & Security > Full Disk Access`; the "partial: permission" note in the totals row is NOT dismissable.
+- **No new dependency.** Open-pane button uses `ctx.open_url` (egui-winit `links` -> `webbrowser` 1.2.4, already in the tree). On macOS that is NSWorkspace, no shell/osascript. Caveat: webbrowser opens the URL *with the default browser app*, not via the scheme handler, so `x-apple.systempreferences:` delivery is UNVERIFIED; fallback is the visible pane name + "Copy pane name" button. If it fails on a real Mac, the alternative is an `objc2-app-kit` NSWorkspace::openURL call (new dep, needs its own entry here).
+>>>>>>> w-07-tcc

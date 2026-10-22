@@ -1,6 +1,7 @@
 use crate::{
     model::{FileEntry, ScanResult, SizeMode},
     scanner::{self, ScanEvent},
+    tcc::{self, TccReport},
     treemap,
 };
 use eframe::egui::{
@@ -101,6 +102,8 @@ pub struct LumaDiskApp {
     progress: Progress,
     receiver: Option<Receiver<ScanEvent>>,
     result: Option<ScanResult>,
+    tcc: TccReport,
+    tcc_dismissed: bool,
     search: String,
     extension_filter: String,
     min_size_index: usize,
@@ -137,6 +140,8 @@ impl LumaDiskApp {
             progress: Progress::default(),
             receiver: None,
             result: None,
+            tcc: TccReport::default(),
+            tcc_dismissed: false,
             search: String::new(),
             extension_filter: "All types".to_owned(),
             min_size_index: 0,
@@ -173,6 +178,8 @@ impl LumaDiskApp {
         self.selected = None;
         self.selected_category = None;
         self.result = None;
+        self.tcc = TccReport::default();
+        self.tcc_dismissed = false;
     }
 
     fn poll_scan(&mut self) {
@@ -210,6 +217,8 @@ impl LumaDiskApp {
                             if let Some(note) = &unaccounted {
                                 message.push_str(&format!(". {note}"));
                             }
+                            self.tcc = tcc::detect_for_current_os(&result);
+                            self.tcc_dismissed = false;
                             self.result = Some(result);
                             self.notify(message, unaccounted.is_some());
                         }
@@ -869,7 +878,48 @@ impl LumaDiskApp {
         });
     }
 
+    /// macOS only: names the exact pane. UNVERIFIED on a real Mac (written on Windows).
+    fn tcc_banner(&mut self, ui: &mut egui::Ui) {
+        if self.tcc_dismissed || !cfg!(target_os = "macos") {
+            return;
+        }
+        let Some(text) = self.tcc.banner_text() else {
+            return;
+        };
+        egui::Frame::new()
+            .fill(PANEL_2)
+            .stroke(Stroke::new(1.0, DANGER))
+            .corner_radius(8.0)
+            .inner_margin(egui::Margin::same(10))
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new("Permission needed - totals are partial")
+                        .strong()
+                        .color(DANGER),
+                );
+                ui.label(RichText::new(text).size(12.0).color(TEXT));
+                ui.horizontal(|ui| {
+                    if ui.button("Open Full Disk Access settings").clicked() {
+                        // egui's OpenUrl -> egui-winit -> webbrowser (NSWorkspace). No shell,
+                        // no child process. It hands the URL to the default *browser* app, so
+                        // the scheme hand-off is not guaranteed: the pane name above and the
+                        // copy button below are the fallback.
+                        ui.ctx()
+                            .open_url(egui::OpenUrl::same_tab(tcc::FULL_DISK_ACCESS_URL));
+                    }
+                    if ui.button("Copy pane name").clicked() {
+                        ui.ctx().copy_text(tcc::FULL_DISK_ACCESS_PANE.to_owned());
+                    }
+                    if ui.button("Dismiss").clicked() {
+                        self.tcc_dismissed = true;
+                    }
+                });
+            });
+        ui.add_space(8.0);
+    }
+
     fn dashboard(&mut self, ui: &mut egui::Ui) {
+        self.tcc_banner(ui);
         self.metrics(ui);
         ui.add_space(12.0);
         match self.view {
@@ -896,13 +946,24 @@ impl LumaDiskApp {
                      not zero, so real usage is higher than the totals shown.",
                 );
                 for dir in result.unreadable_dirs().take(5) {
-                    hover.push_str(&format!("\n{}  ({:?})", dir.path.display(), dir.state));
+                    hover.push_str(&format!(
+                        "\n{}  ({:?})",
+                        dir.path.display(),
+                        dir.state.describe()
+                    ));
                 }
                 ui.add_space(12.0);
                 ui.label(RichText::new(note).size(11.0).color(DANGER))
                     .on_hover_text(hover);
             }
         });
+        if let Some(note) = self.tcc.partial_note() {
+            // Never dismissable: the totals must not quietly exclude protected folders.
+            ui.label(RichText::new(note).size(11.0).strong().color(DANGER))
+                .on_hover_text(
+                    "Full Disk Access is probably missing. Dismissing the banner does not                      change this: the totals above are partial.",
+                );
+        }
         ui.add_space(6.0);
         let mode = self.size_mode;
         let result = self.result.as_ref().unwrap();

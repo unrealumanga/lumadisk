@@ -26,3 +26,4 @@
 {"ticket": "E-D3", "workstream": "\u00a73", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "experiment: UI-fold vs aggregator+arc-swap at 10M (.wt/E-D3)", "worktree": ".wt/E-D3", "pr": null, "ts": "2026-10-22T18:00:00Z"}
 {"ticket": "W-07", "workstream": "\u00a74", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "TCC detection + deep link", "worktree": ".wt/W-07", "pr": null, "ts": "2026-10-22T18:00:00Z"}
 {"ticket": "W-08", "workstream": "\u00a76", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "fixture-gen + fixtures tests", "worktree": ".wt/W-08", "pr": null, "ts": "2026-10-22T18:00:00Z"}
+{"ts": "2026-10-22T18:40:00Z", "ticket": "W-07", "workstream": "\u00a74", "agent": "DeepSeek", "event": "state", "state": "merged", "summary": "TCC detect+banner (macOS UNVERIFIED; open_url may not open pane: fallback copy)", "worktree": ".wt/W-07", "pr": null}
