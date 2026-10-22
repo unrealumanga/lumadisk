@@ -2,10 +2,10 @@
 
 - §0 W-00 [merged] orch: ARCHITECTURE + baseline docs
 - §0 W-01 [merged] DeepSeek-1: bench harness, 10k/100k/1M baseline (fcde2c8)
-- §1 W-04 [queued] DeepSeek: unsigned dmg/AppImage/deb CI skeleton
+- §1 W-04 [in_flight] DeepSeek: unsigned dmg/AppImage/deb CI skeleton (.wt/W-04)
 - §1 W-05 [blocked] user: signing needs Apple acct, HSM cert, VMs
 - §2 W-02 [queued] Astra-6: size types + tree model (blocks W-03..)
-- §5 W-03 [queued] DeepSeek: NSFileManager trash, drop osascript
+- §5 W-03 [in_flight] DeepSeek: NSFileManager trash + batching (.wt/W-03)
 
 Metrics:
 - scan_1m/peak_rss_mib = 393

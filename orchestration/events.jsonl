@@ -8,3 +8,6 @@
 {"ts": "2026-10-22T14:00:00Z", "ticket": "W-01", "event": "metric", "metric": "peak_rss_mib", "value": 393, "bench": "scan_1m"}
 {"ts": "2026-10-22T14:00:00Z", "ticket": "W-01", "event": "metric", "metric": "frametime_p99_ms", "value": 16.6, "bench": "scan_1m_postscan_noquery"}
 {"ts": "2026-10-22T14:00:00Z", "ticket": "W-01", "event": "metric", "metric": "frametime_p99_ms", "value": 336, "bench": "scan_1m_postscan_query"}
+{"ts": "2026-10-22T15:00:00Z", "ticket": "W-03", "workstream": "\u00a75", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "NSFileManager trash + batching (.wt/W-03)", "worktree": ".wt/W-03", "pr": null}
+{"ts": "2026-10-22T15:00:00Z", "ticket": "W-04", "workstream": "\u00a71", "agent": "DeepSeek", "event": "state", "state": "in_flight", "summary": "unsigned dmg/AppImage/deb CI skeleton (.wt/W-04)", "worktree": ".wt/W-04", "pr": null}
+{"ts": "2026-10-22T15:00:00Z", "ticket": "D2", "workstream": "\u00a72", "agent": "orch", "event": "debate", "debate": "D2", "round": 1, "positions": ["A", "B"]}
