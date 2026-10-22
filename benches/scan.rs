@@ -4,7 +4,7 @@
 //! Run each tree in its own process: peak RSS is a per-process high-water mark.
 use eframe::egui::{Rect, pos2};
 use lumadisk::{
-    model::ScanResult,
+    model::{ScanResult, SizeMode},
     scanner::{self, ScanEvent},
     treemap,
 };
@@ -107,7 +107,7 @@ fn filtered_indices(result: &ScanResult, query: &str) -> Vec<usize> {
         .iter()
         .enumerate()
         .filter(|(_, file)| {
-            file.size >= min_size
+            file.counted_bytes(SizeMode::Physical).unwrap_or(0) >= min_size
                 && (query.is_empty()
                     || file.name.to_ascii_lowercase().contains(&query)
                     || file
@@ -133,7 +133,15 @@ fn heatmap_layout(result: &ScanResult, indices: &[usize], rect: Rect) -> usize {
     let mut groups: Vec<(String, Vec<usize>, u64)> = groups
         .into_iter()
         .map(|(extension, files)| {
-            let size = files.iter().map(|i| result.files[*i].size.max(1)).sum();
+            let size = files
+                .iter()
+                .map(|i| {
+                    result.files[*i]
+                        .counted_bytes(SizeMode::Physical)
+                        .unwrap_or(0)
+                        .max(1)
+                })
+                .sum();
             (extension, files, size)
         })
         .collect();
@@ -145,7 +153,15 @@ fn heatmap_layout(result: &ScanResult, indices: &[usize], rect: Rect) -> usize {
         let fw: Vec<(usize, u64)> = groups[gi]
             .1
             .iter()
-            .map(|i| (*i, result.files[*i].size.max(1)))
+            .map(|i| {
+                (
+                    *i,
+                    result.files[*i]
+                        .counted_bytes(SizeMode::Physical)
+                        .unwrap_or(0)
+                        .max(1),
+                )
+            })
             .collect();
         tiles += treemap::layout(&fw, content).len();
     }
@@ -210,11 +226,16 @@ fn main() {
     let rss_scan = peak_rss_bytes();
     println!("scan (dups off):");
     println!(
-        "  wall time to Complete: {:.3}s  files={} bytes={:.1}MiB skipped={} (scanner-internal elapsed {}ms)",
+        "  wall time to Complete: {:.3}s  files={} logical={:.1}MiB physical={:.1}MiB file_errors={} unreadable_dirs={} dirs={} hardlink_extra={} physical_unknown={} (scanner-internal elapsed {}ms)",
         wall.as_secs_f64(),
         result.files.len(),
-        mib(result.total_bytes),
-        result.skipped,
+        mib(result.total_logical.0),
+        mib(result.total_physical.0),
+        result.file_error_count,
+        result.unreadable_dir_count(),
+        result.dirs.len(),
+        result.hardlink_extra_count,
+        result.physical_unknown_count,
         result.elapsed_ms
     );
     println!(
@@ -225,12 +246,13 @@ fn main() {
 
     // 2. Dup finder on the tree.
     let t = Instant::now();
-    let groups = scanner::find_duplicate_groups(&result.files);
+    let found = scanner::find_duplicate_groups(&result.files);
     println!("dup finder:");
     println!(
-        "  find_duplicate_groups: {:.3}s, {} groups; peak RSS now {:.1} MiB",
+        "  find_duplicate_groups: {:.3}s, {} groups, {} read errors; peak RSS now {:.1} MiB",
         t.elapsed().as_secs_f64(),
-        groups.len(),
+        found.groups.len(),
+        found.read_errors,
         mib(peak_rss_bytes())
     );
 
@@ -242,7 +264,15 @@ fn main() {
     let weights: Vec<(usize, u64)> = indices
         .iter()
         .take(1_500)
-        .map(|i| (*i, result.files[*i].size.max(1)))
+        .map(|i| {
+            (
+                *i,
+                result.files[*i]
+                    .counted_bytes(SizeMode::Physical)
+                    .unwrap_or(0)
+                    .max(1),
+            )
+        })
         .collect();
     let t = Instant::now();
     let tiles = treemap::layout(&weights, rect).len();
