@@ -224,14 +224,14 @@ impl LumaDiskApp {
     /// The `limit` largest of `indices` in the current size mode, largest first.
     /// `files` is pre-sorted by physical size, so the default mode needs no work; logical
     /// mode does an O(n) selection plus a sort of only `limit` items (no per-frame full sort).
-    fn largest_first(&self, mut indices: Vec<usize>, limit: usize) -> Vec<usize> {
+    fn largest_first(&self, indices: &[usize], limit: usize) -> Vec<usize> {
         let Some(result) = &self.result else {
             return Vec::new();
         };
         if self.size_mode == SizeMode::Physical {
-            indices.truncate(limit);
-            return indices;
+            return indices.iter().take(limit).copied().collect();
         }
+        let mut indices = indices.to_vec();
         let key = |index: &usize| std::cmp::Reverse(result.files[*index].counted_logical());
         if indices.len() > limit {
             indices.select_nth_unstable_by_key(limit, key);
@@ -968,7 +968,7 @@ impl LumaDiskApp {
 
     fn paint_heatmap(&mut self, ui: &mut egui::Ui, rect: Rect, indices: &[usize]) {
         let mode = self.size_mode;
-        let top = self.largest_first(indices.to_vec(), 1_500);
+        let top = self.largest_first(indices, 1_500);
         let Some(result) = &self.result else { return };
         let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
         for index in top {
@@ -1143,7 +1143,7 @@ impl LumaDiskApp {
         );
         ui.add_space(8.0);
         let mode = self.size_mode;
-        let indices = self.largest_first(self.filtered_indices(), 2_000);
+        let indices = self.largest_first(&self.filtered_indices(), 2_000);
         let mut clicked = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])

@@ -107,7 +107,7 @@ fn filtered_indices(result: &ScanResult, query: &str) -> Vec<usize> {
         .iter()
         .enumerate()
         .filter(|(_, file)| {
-            file.counted_bytes(SizeMode::Physical).unwrap_or(0) >= min_size
+            (min_size == 0 || file.counted_bytes(SizeMode::Physical).unwrap_or(0) >= min_size)
                 && (query.is_empty()
                     || file.name.to_ascii_lowercase().contains(&query)
                     || file
