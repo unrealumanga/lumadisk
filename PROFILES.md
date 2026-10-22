@@ -8,3 +8,4 @@
 - DeepSeek (W-04): thorough, honest UNVERIFIED list; but left an unpinned download (orchestrator pinned sha256). Check supply-chain pins on review.
 - Astra-6 (W-02): high. Caught a wrong API in the brief by measuring, stated bench delta honestly, listed gaps + UNVERIFIED. Did not launch the GUI (UI unseen).
 - DeepSeek (W-07): high; flagged its own risk (webbrowser may not deliver the x-apple scheme). Claim 'NSWorkspace, no process' verified.
+- DeepSeek (W-08): high; assertions from generator manifest (verified). 'No bugs found' plausible post-W-02 but physical total only upper-bounded; cases that cannot be built print SKIPPED and pass (0 skipped on this box).

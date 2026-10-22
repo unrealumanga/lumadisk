@@ -9,7 +9,7 @@
 - §3 W-06 [queued] orch: cancel/snapshot/treemap cache: needs D3+D4 debates first
 - §4 W-07 [merged] DeepSeek: TCC detect+banner (macOS UNVERIFIED; open_url may not open pane: fallback copy)
 - §5 W-03 [merged] DeepSeek: NSFileManager (macOS, untested) + 50-batch trash; Linux shell path is test-only
-- §6 W-08 [in_flight] DeepSeek: fixture-gen + fixtures tests
+- §6 W-08 [merged] DeepSeek: fixture-gen + 14 passing cases, 13 ignored (stubs/heavy); 0 scanner bugs found
 
 Metrics:
 - cargo_test/tests_unit = 15
@@ -18,5 +18,6 @@ Metrics:
 - scan_1m/scan_wall_s = 37.8
 - scan_1m_postscan_noquery/frametime_p99_ms = 16.6
 - scan_1m_postscan_query/frametime_p99_ms = 336
+- tests/fixtures.rs/fixture_cases_passing_windows = 14
 
 Recent notes:
