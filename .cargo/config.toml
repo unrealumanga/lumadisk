@@ -1,0 +1,2 @@
+[alias]
+fixture-gen = "run --features fixture-gen --bin fixture-gen --"
